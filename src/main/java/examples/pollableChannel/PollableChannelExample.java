@@ -1,4 +1,4 @@
-package examples;
+package examples.pollableChannel;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -11,23 +11,21 @@ import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.config.EnableIntegration;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.integration.dsl.IntegrationFlows;
-import org.springframework.integration.dsl.Channels;
+import org.springframework.integration.dsl.MessageChannels;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.PollableChannel;
 import org.springframework.messaging.support.GenericMessage;
 
-
-
 @Configuration
 @EnableIntegration
-@IntegrationComponentScan
-public class HelloWorldApp {
+@IntegrationComponentScan(value = { "examples.pollableChannel" })
+public class PollableChannelExample {
 
-	private static Log logger = LogFactory.getLog(HelloWorldApp.class);
+	private static Log logger = LogFactory.getLog(PollableChannel.class);
 
 	@Bean
 	public PollableChannel outputChannel() {
-		return new QueueChannel();
+		return  MessageChannels.queue().get();
 	}
 
 	@Bean
@@ -39,7 +37,7 @@ public class HelloWorldApp {
 	}
 
 	public static void main(final String... args) {
-		final AbstractApplicationContext context = new AnnotationConfigApplicationContext(HelloWorldApp.class);
+		final AbstractApplicationContext context = new AnnotationConfigApplicationContext(PollableChannel.class);
 		MessageChannel inputChannel = context.getBean("inputChannel", MessageChannel.class);
 		PollableChannel outputChannel = context.getBean("outputChannel", PollableChannel.class);
 		inputChannel.send(new GenericMessage<String>("World FUNCIONA 1"));

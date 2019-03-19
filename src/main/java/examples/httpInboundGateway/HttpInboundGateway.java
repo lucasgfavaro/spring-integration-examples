@@ -1,4 +1,4 @@
-package examples;
+package examples.httpInboundGateway;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -22,76 +22,77 @@ import org.springframework.integration.dsl.Transformers;
 import org.springframework.integration.http.inbound.HttpRequestHandlingMessagingGateway;
 import org.springframework.integration.http.inbound.RequestMapping;
 
+import examples.TestPayload;
+
 @Configuration
 @EnableIntegration
-@IntegrationComponentScan
+@IntegrationComponentScan(value = { "examples.httpGateway" })
 @SpringBootApplication
-public class TurnerMock {
+public class HttpInboundGateway {
 
-	// CARACTERISTICAS A PROBAR
-	// * Entender THROUGHPUT (Ver cuantos puede atender en paralelo)
-	// * Ver como liberar el thread inicial inmendiatamente dando una respuesta
-	
-	
-	
-	private static Log logger = LogFactory.getLog(TurnerMock.class);
+	private static Log logger = LogFactory.getLog(HttpInboundGateway.class);
 
 	@Bean
-	public HttpRequestHandlingMessagingGateway esbHttpGateWay() {
-		HttpRequestHandlingMessagingGateway gateway = new HttpRequestHandlingMessagingGateway(true);
+	public HttpRequestHandlingMessagingGateway httpGateWay() {
+		HttpRequestHandlingMessagingGateway gateway = new HttpRequestHandlingMessagingGateway(false);
 
 		RequestMapping requestMapping = new RequestMapping();
 		requestMapping.setMethods(HttpMethod.POST, HttpMethod.OPTIONS);
-		requestMapping.setPathPatterns("esb/api/v1/catalogue");
+		requestMapping.setPathPatterns("/resource");
 		requestMapping.setConsumes("application/json");
 		requestMapping.setProduces("application/json");
+		
 		Map<String, Expression> headerExpressions = new HashMap<>();
 		gateway.setHeaderExpressions(headerExpressions);
 		gateway.setCountsEnabled(true);
 		gateway.setRequestMapping(requestMapping);
-		gateway.setRequestChannel(esbRequestChannel());
-		gateway.setReplyChannelName("esbOutBoundChannel");
+		gateway.setRequestChannel(requestChannel());
+		gateway.setReplyChannel(outBoundChannel());
 		gateway.setReplyMapper(null);
 		gateway.setAutoStartup(true);
-		//gateway.setErrorChannelName("esbInFlowErrorChannel");
+		gateway.setReplyTimeout(0);
+		gateway.setErrorChannelName("errorChannel");
 		return gateway;
 	}
 
 	@Bean
-	public DirectChannel esbRequestChannel() {
+	public DirectChannel requestChannel() {
 		return MessageChannels.direct().get();
 	}
 	
 	@Bean
-	public DirectChannel esbOutBoundChannel() {
+	public DirectChannel outBoundChannel() {
 		return MessageChannels.direct().get();
 	}
-
+	
+	@Bean
+	public DirectChannel errorChannel() {
+		return MessageChannels.direct().get();
+	}
+	
 	@Bean
 	@Autowired
-	public IntegrationFlow createCatalogueChannelFlow() {
-		return IntegrationFlows.from(esbRequestChannel())
+	public IntegrationFlow channelFlow() {
+		return IntegrationFlows.from(requestChannel())
 				.transform(Transformers.fromJson(TestPayload.class))
 				.handle((p, h) -> {
 					Long number = Long.parseLong(((TestPayload)p).getNumber());
-					
-					System.out.println("COMIENZA PROCESO " + number);
+				
+					System.out.println("HANDLER STARTS" + number);
 									
 					try {
-						Thread.sleep(10000* number);
-					} catch (Exception e) {
-
-					}
+						Thread.sleep(1000 * number);
+					} catch (Exception e) {}
 					
-					System.out.println("FINALIZA PROCESO " + number);
+					System.out.println("HANDLER ENDS" + number);
 					
 					return p;
 				})
-				// Log input for tracking purposes
+				.handle((p,h) -> {return null;})
 				.get();
 	}
 
     public static void main(String[] args) {
-        SpringApplication.run(TurnerMock.class, args);
+        SpringApplication.run(HttpInboundGateway.class, args);
     }
 }
